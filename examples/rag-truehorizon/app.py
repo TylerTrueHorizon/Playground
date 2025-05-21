@@ -5,7 +5,6 @@ import numpy as np
 import faiss
 import openai
 import streamlit as st
-from agno import Agent
 import os
 import whoosh.index as whoosh_index
 from whoosh.qparser import MultifieldParser
@@ -55,11 +54,10 @@ def load_indexes():
     return faiss_idx, texts, fnames, whoosh_ix
 
 
-class RAGAgent(Agent):
+class RAGAgent:
     """Retrieval-augmented agent using FAISS and Whoosh with Reciprocal Rank Fusion."""
 
     def __init__(self, faiss_idx, texts, fnames, whoosh_ix):
-        super().__init__()
         self.faiss_idx = faiss_idx
         self.texts = texts
         self.fnames = fnames

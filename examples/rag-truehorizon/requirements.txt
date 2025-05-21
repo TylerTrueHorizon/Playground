@@ -4,5 +4,4 @@ beautifulsoup4
 requests
 streamlit
 numpy
-agno
 whoosh
