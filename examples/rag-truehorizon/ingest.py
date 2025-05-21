@@ -8,11 +8,16 @@ from bs4 import BeautifulSoup
 import faiss
 import numpy as np
 import openai
+import whoosh.index as whoosh_index
+from whoosh.fields import Schema, TEXT, ID
+import shutil
+
 
 BASE_URL = "https://truehorizon.ai"
 
 DATA_DIR = "data"
 INDEX_PATH = "faiss_index.pkl"
+WHOOSH_INDEX_DIR = "whoosh_indexdir"
 
 
 def fetch_page(url: str) -> str:
@@ -58,12 +63,15 @@ def embed_text(text: str) -> list:
 
 
 def build_index() -> None:
-    """Create a FAISS index from crawled pages."""
+    """Create a FAISS index and a Whoosh index from crawled pages."""
     texts = []
+    fnames = []
     for fname in os.listdir(DATA_DIR):
         with open(os.path.join(DATA_DIR, fname), "r", encoding="utf-8") as f:
             texts.append(f.read())
+            fnames.append(fname)
 
+    # FAISS Indexing
     vectors = [embed_text(t) for t in texts]
     dim = len(vectors[0])
     index = faiss.IndexFlatL2(dim)
@@ -72,8 +80,20 @@ def build_index() -> None:
     with open(INDEX_PATH, "wb") as f:
         pickle.dump({"index": index, "texts": texts}, f)
 
+    # Whoosh Indexing
+    schema = Schema(title=TEXT(stored=True), path=ID(stored=True), content=TEXT)
+    if os.path.exists(WHOOSH_INDEX_DIR):
+        shutil.rmtree(WHOOSH_INDEX_DIR)
+    os.makedirs(WHOOSH_INDEX_DIR)
+    ix = whoosh_index.create_in(WHOOSH_INDEX_DIR, schema)
+    writer = ix.writer()
+    for i, text in enumerate(texts):
+        writer.add_document(title=fnames[i], path=fnames[i], content=text)
+    writer.commit()
+
 
 if __name__ == "__main__":
     crawl_site(BASE_URL)
     build_index()
-    print("Index built at", INDEX_PATH)
+    print("FAISS index built at", INDEX_PATH)
+    print("Whoosh index built at", WHOOSH_INDEX_DIR)
